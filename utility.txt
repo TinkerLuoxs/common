@@ -1,0 +1,91 @@
+#ifdef _WIN32
+#define LOADLIBRARY(name)   LoadLibrary(name)
+#define FREELIBRARY(ptr)    FreeLibrary((HMODULE)ptr)
+#define LIBERROR            GetLastError
+#define LIBFUNCTION(ptr,name)   GetProcAddress((HMODULE)ptr, name)
+#else
+#include <dlfcn.h>
+#define LOADLIBRARY(name)   dlopen(name, RTLD_NOW)
+#define FREELIBRARY(ptr)    dlclose(ptr)
+#define LIBERROR            dlerror
+#define LIBFUNCTION(ptr,name)   dlsym(ptr, name)
+#endif
+
+
+
+#include <boost/thread/thread.hpp>
+typedef boost::shared_lock<boost::shared_mutex> readLock;
+typedef boost::unique_lock<boost::shared_mutex> writeLock;
+
+boost::shared_mutex  rwmutex;
+
+void readOnly()
+{
+    readLock  rdlock( rwmutex );
+    /// do something
+}
+void writeOnly()
+{
+    writeLock  wtlock( rwmutex );
+    /// do something
+}
+
+
+int strtoint(sa_uint8 *str, int len)
+{
+    int result = 0;
+    while (len-- > 0)
+    {
+        if (*str >= '0' && *str <= '9')
+        {
+            result *= 10;
+            result += (*str - '0');
+            ++str;
+        }
+        else
+        {
+            return result;
+        }
+    }
+    return result;
+}
+
+int get_days(int year, int mon)
+{
+    int days[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+    int day = 1;
+
+    if (2 == mon)
+    {
+        day = ((0 == year % 4) && (0 != year % 100)) || (0 == year % 400) ? 29 : 28;
+    }
+    else
+    {
+        day = days[mon - 1];
+    }
+    return day;
+}
+
+template<int N>
+struct value_const
+{
+    static const int value = N;
+};
+
+
+template<typename T, typename F>
+struct index_of : value_const<-1>
+{
+};
+
+template<typename T, typename F>
+struct index_of<ul<T, F>, T> : value_const<0>
+{
+};
+
+template<typename T, typename F, typename S>
+struct index_of<ul<T, F>, S> : value_const<
+    (index_of<F, S>::value == -1 ? -1 : 
+    index_of<F, S>::value + 1)>
+{
+};
